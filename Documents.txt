@@ -1,0 +1,11 @@
+transaction row fields:
+OriginCard      DestinationCard     TransactionDate     TransactionTime     TransactionAmount       TransactionReference     TransactionId   
+
+holders row fields:
+Name	NationalCode	CardNumber
+
+Rules Definition:
+
+1- 10 PM < TransactionTime < 6 AM
+2- Bank cards issued by certain banks (FIRST 6 DIGITS)
+3- 
