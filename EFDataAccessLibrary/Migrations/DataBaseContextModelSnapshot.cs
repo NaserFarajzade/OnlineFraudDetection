@@ -98,10 +98,6 @@ namespace EFDataAccessLibrary.Migrations
                     b.Property<DateTime>("TransactionDateTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("TransactionId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("TransactionReference")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

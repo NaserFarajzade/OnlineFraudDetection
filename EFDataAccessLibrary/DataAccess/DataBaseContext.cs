@@ -5,7 +5,10 @@ namespace EFDataAccessLibrary.DataAccess;
 
 public class DataBaseContext: DbContext
 {
-    public DataBaseContext(DbContextOptions options): base(options){}
+    public DataBaseContext(DbContextOptions options) : base(options)
+    {
+        Database.EnsureCreated();
+    }
     
     public DbSet<AccountHolder> AccountHolders { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
