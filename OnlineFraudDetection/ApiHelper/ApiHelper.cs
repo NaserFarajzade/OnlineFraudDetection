@@ -1,5 +1,6 @@
 ﻿using EFDataAccessLibrary.Models;
 using OnlineFraudDetection.Models;
+using OnlineFraudDetection.RedisCache;
 using OnlineFraudDetection.Repositories.Abstraction;
 using OnlineFraudDetection.Validators.Abstraction;
 using OnlineFraudDetection.Validators.Implementation;
@@ -11,6 +12,7 @@ public class ApiHelper:IApiHelper
     private readonly ITransactionRepository _transactionRepository;
     private readonly IAccountHolderRepository _accountHolderRepository;
     private readonly IProfileRepository _profileRepository;
+    private readonly IRedisRepository _redisRepository;
     private readonly Settings _settings;
     private readonly IValidator _validator;
 
@@ -18,19 +20,34 @@ public class ApiHelper:IApiHelper
         ITransactionRepository transactionRepository, 
         IAccountHolderRepository accountHolderRepository, 
         IProfileRepository profileRepository, 
+        IRedisRepository redisRepository,
         Settings settings,
         IValidator validator)
     {
         _transactionRepository = transactionRepository;
         _accountHolderRepository = accountHolderRepository;
         _profileRepository = profileRepository;
+        _redisRepository = redisRepository;
         _settings = settings;
         _validator = validator;
     }
 
     public async Task<string> GetFraudPercentage(Transaction transaction)
     {
-        var profile = await _profileRepository.Get(transaction.OriginCard);
+        Profile? profile;
+        if (_settings.redisCache.EnableCaching)
+        {
+            if (!_redisRepository.TryGetProfile(transaction.OriginCard,out profile))
+            {
+                profile = await _profileRepository.Get(transaction.OriginCard);
+                _redisRepository.AddProfile(profile);
+            }
+        }
+        else
+        {
+            profile = await _profileRepository.Get(transaction.OriginCard);
+        }
+        
         if (profile is null) return "profile not found";
         return _validator.GetTransactionFraudPercentage(transaction,profile).ToString();
     }
@@ -45,14 +62,18 @@ public class ApiHelper:IApiHelper
         {
             var amountAvg = await _transactionRepository.GetTransactionAmountAverage(cardNumber);
             var accountHolderCardsCount = await _accountHolderRepository.GetAccountHolderCardsCount(cardNumber);
-            //TODO behbood performance
 
-            await _profileRepository.AddAsync(new Profile()
+            var profile = new Profile()
             {
                 CardNumber = cardNumber,
                 TransactionsAmountAverage = amountAvg,
                 AccountHolderCardsCount = accountHolderCardsCount
-            });
+            };
+            if (_settings.redisCache.EnableCaching)
+            {
+                _redisRepository.AddProfile(profile);
+            }
+            await _profileRepository.AddAsync(profile);
         }
     }
     public async Task CreateProfileWithNewDataSets(List<string> accountHolderDataSetFileNames, List<string> transactionDataSetFileNames)
@@ -72,6 +93,7 @@ public class ApiHelper:IApiHelper
         await _profileRepository.DeleteAll();
         await _transactionRepository.DeleteAll();
         await _accountHolderRepository.DeleteAll();
+        await _redisRepository.DeleteAll();
     }
     private async Task AddInformationFromDirectoryToDataBase()
     {
