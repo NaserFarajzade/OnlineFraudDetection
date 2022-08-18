@@ -22,11 +22,6 @@ public class Validator:IValidator
 
     public int GetTransactionFraudPercentage(Transaction transaction, Profile profile)
     {
-        var sumOfFraudCoeffs = _settings.FraudulentFactorCoefficient.Time +
-                                _settings.FraudulentFactorCoefficient.BankType +
-                                _settings.FraudulentFactorCoefficient.CardsCount +
-                                _settings.FraudulentFactorCoefficient.ExceedingTheAverage;
-        
         var transactionFraudSum = 0;
         
         foreach (var (coeff, validator) in _tuples)
@@ -34,7 +29,7 @@ public class Validator:IValidator
             transactionFraudSum += coeff * ManageValidator(validator,transaction,profile);
         }
 
-        return transactionFraudSum / sumOfFraudCoeffs;
+        return transactionFraudSum / 100;
     }
 
     private int ManageValidator(IFraudRuleValidator validator, Transaction transaction, Profile profile)
