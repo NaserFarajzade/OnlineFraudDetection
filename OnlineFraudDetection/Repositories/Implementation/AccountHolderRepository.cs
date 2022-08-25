@@ -37,10 +37,10 @@ public class AccountHolderRepository:IAccountHolderRepository
         await _context.SaveChangesAsync();
     }
 
-    public Task<IEnumerable<string>> GetAllCardsNumber()
+    public Task<IEnumerable<Tuple<string,string>>> GetAllAccountHolderNameAndCardNumbers()
     {
-        var cardsNumber = _context.AccountHolders.Select(holder => holder.CardNumber).Distinct().ToList();
-        return Task.FromResult<IEnumerable<string>>(cardsNumber);
+        var cardsNumber = _context.AccountHolders.Select(holder => new Tuple<string,string>(holder.CardNumber,holder.Name)).Distinct().ToList();
+        return Task.FromResult<IEnumerable<Tuple<string,string>>>(cardsNumber);
     }
 
     public Task<int> GetAccountHolderCardsCount(string cardNumber)

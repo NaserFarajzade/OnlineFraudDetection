@@ -14,6 +14,8 @@ public class Settings
     public AccountHoldersFieldsIndexSettings AccountHoldersFieldsIndex { get; set; }
     public FraudulentFactorCoefficientSettings FraudulentFactorCoefficient { get; set; }
     public FraudulentFactorNormalizationSettings FraudulentFactorNormalizationValue { get; set; }
+    public int FraudPercentageThreshold { get; set; }
+    public bool ShowRulesPercentageInLog { get; set; }
     public RedisCache redisCache { get; set; }
 }
 
@@ -53,12 +55,4 @@ public class AccountHoldersFieldsIndexSettings
     public int Name {get; set;}
     public int NationalCode {get; set;}
     public int CardNumber {get; set;}
-}
-
-public class FraudulentFactorCoefficient
-{
-    public int Time { get; set; }
-    public int CardsCount { get; set; }
-    public int BankType { get; set; }
-    public int ExceedingTheAverage { get; set; }
 }

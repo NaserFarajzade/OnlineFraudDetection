@@ -1,4 +1,5 @@
-﻿using EFDataAccessLibrary.Models;
+﻿using System.Diagnostics;
+using EFDataAccessLibrary.Models;
 using OnlineFraudDetection.Models;
 using OnlineFraudDetection.Validators.Abstraction;
 
@@ -20,27 +21,30 @@ public class Validator:IValidator
         };
     }
 
-    public int GetTransactionFraudPercentage(Transaction transaction, Profile profile)
+    public FraudResult GetTransactionFraudResult(Transaction transaction, Profile profile)
     {
         var transactionFraudSum = 0;
-        
+        var result = new FraudResult();
+        var stopwatch = new Stopwatch();
         foreach (var (coeff, validator) in _tuples)
         {
-            transactionFraudSum += coeff * ManageValidator(validator,transaction,profile);
+            stopwatch.Start();
+            var rulePercentage = coeff * validator.GetPercentage(transaction, profile); 
+            transactionFraudSum += rulePercentage;
+            stopwatch.Stop();
+            var duration = (float)stopwatch.Elapsed.Ticks / 10; //micro seconds
+            ((IResultPropertySetter)validator).SetRuleDuration(result,duration);
+            if (_settings.ShowRulesPercentageInLog)
+            {
+                ((IResultPropertySetter)validator).SetRulePercentage(result,rulePercentage / 100);
+            }
+            stopwatch.Reset();
         }
 
-        return transactionFraudSum / 100;
-    }
-
-    private int ManageValidator(IFraudRuleValidator validator, Transaction transaction, Profile profile)
-    {
-        return validator switch
-        {
-            TimeRuleValidator timeRuleValidator => timeRuleValidator.GetPercentage(transaction.TransactionDateTime.Hour, null),
-            BankTypeRuleValidator bankTypeRuleValidator => bankTypeRuleValidator.GetPercentage(transaction.OriginCard.Substring(0, 6), null),
-            CardsCountRuleValidator cardsCountRuleValidator => cardsCountRuleValidator.GetPercentage(null, profile.AccountHolderCardsCount),
-            ExceedingTheAverageRuleValidator exceedingTheAverageRuleValidator => exceedingTheAverageRuleValidator.GetPercentage(transaction.TransactionAmount, profile.TransactionsAmountAverage),
-            _ => throw new Exception("validator not found")
-        };
+        result.AccountHolderName = profile.Name;
+        result.CardNumber = transaction.OriginCard;
+        result.Percentage = transactionFraudSum / 100;
+        result.IsFraud = result.Percentage >= _settings.FraudPercentageThreshold;
+        return result;
     }
 }

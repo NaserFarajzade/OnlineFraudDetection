@@ -1,8 +1,9 @@
 ﻿using EFDataAccessLibrary.Models;
+using OnlineFraudDetection.Models;
 
 namespace OnlineFraudDetection.Validators.Abstraction;
 
 public interface IValidator
 {
-    int GetTransactionFraudPercentage(Transaction transaction, Profile profile);
+    FraudResult GetTransactionFraudResult(Transaction transaction, Profile profile);
 }

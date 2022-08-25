@@ -1,9 +1,11 @@
-﻿using EFDataAccessLibrary.Models;
+﻿using System.Diagnostics;
+using EFDataAccessLibrary.Models;
 using OnlineFraudDetection.Models;
 using OnlineFraudDetection.RedisCache;
 using OnlineFraudDetection.Repositories.Abstraction;
 using OnlineFraudDetection.Validators.Abstraction;
 using OnlineFraudDetection.Validators.Implementation;
+using Serilog;
 
 namespace OnlineFraudDetection.ApiHelper;
 
@@ -35,11 +37,13 @@ public class ApiHelper:IApiHelper
     public async Task<string> GetFraudPercentage(Transaction transaction)
     {
         Profile? profile;
+        var stopWatch = Stopwatch.StartNew();
         if (_settings.redisCache.EnableCaching)
         {
             if (!_redisRepository.TryGetProfile(transaction.OriginCard,out profile))
             {
                 profile = await _profileRepository.Get(transaction.OriginCard);
+                if (profile is null) return "profile not found";
                 _redisRepository.AddProfile(profile);
             }
         }
@@ -47,34 +51,80 @@ public class ApiHelper:IApiHelper
         {
             profile = await _profileRepository.Get(transaction.OriginCard);
         }
+        var dbRequestDuration = (float)stopWatch.Elapsed.Ticks / 10; //micro seconds
         
         if (profile is null) return "profile not found";
-        return _validator.GetTransactionFraudPercentage(transaction,profile).ToString();
+        var result = _validator.GetTransactionFraudResult(transaction, profile);
+        
+        var totalElapsedTime = (float)stopWatch.Elapsed.Ticks / 10; //micro seconds 
+        result.DataBaseRequestDuration = dbRequestDuration;
+        result.TotalElapsedTime = totalElapsedTime;
+        result.IsRedisCacheEnabled = _settings.redisCache.EnableCaching;
+        var timeLog = new SingleValueLog()
+        {
+            Id = transaction.Id,
+            Type = "TimeLog",
+            Duration = result.TimeRuleValidationDuration,
+            Percentage = result.TimeRuleValidationPercentage,
+            IsRedisCacheEnabled = _settings.redisCache.EnableCaching
+        };
+        var bankLog = new SingleValueLog()
+        {
+            Id = transaction.Id,
+            Type = "BankLog",
+            Duration = result.BankTypeRuleValidationDuration,
+            Percentage = result.BankTypeRuleValidationPercentage,
+            IsRedisCacheEnabled = _settings.redisCache.EnableCaching
+        };
+        var cardsCountLog = new SingleValueLog()
+        {
+            Id = transaction.Id,
+            Type = "CardsCountLog",
+            Duration = result.CardsCountRuleValidationDuration,
+            Percentage = result.CardsCountRuleValidationPercentage,
+            IsRedisCacheEnabled = _settings.redisCache.EnableCaching
+        };
+        var exceedingTheAverageLog = new SingleValueLog()
+        {
+            Id = transaction.Id,
+            Type = "ExceedingTheAverageLog",
+            Duration = result.ExceedingTheAverageRuleValidationDuration,
+            Percentage = result.ExceedingTheAverageRuleValidationPercentage,
+            IsRedisCacheEnabled = _settings.redisCache.EnableCaching
+        };
+        var dataBaseRequestLog = new SingleValueLog()
+        {
+            Id = transaction.Id,
+            Type = "DataBaseRequestLog",
+            Duration = result.DataBaseRequestDuration,
+            IsRedisCacheEnabled = _settings.redisCache.EnableCaching
+        };
+        var totalResultLog = new SingleValueLog()
+        {
+            Id = transaction.Id,
+            Type = "TotalResultLog",
+            Duration = result.TotalElapsedTime,
+            Percentage = result.Percentage,
+            IsRedisCacheEnabled = _settings.redisCache.EnableCaching
+        };
+        
+        
+        Log.Information("{@SingleValueLog}",timeLog);
+        Log.Information("{@SingleValueLog}",bankLog);
+        Log.Information("{@SingleValueLog}",cardsCountLog);
+        Log.Information("{@SingleValueLog}",exceedingTheAverageLog);
+        Log.Information("{@SingleValueLog}",dataBaseRequestLog);
+        Log.Information("{@SingleValueLog}",totalResultLog);
+        Log.Information("{@FraudResult}",result);
+        
+        return result.Percentage.ToString();
     }
 
     public async Task CreateProfiles()
     {
         await DeleteTableRows();
         await AddInformationFromDirectoryToDataBase();
-        
-        var cardsNumber = await _accountHolderRepository.GetAllCardsNumber();
-        foreach (var cardNumber in cardsNumber)
-        {
-            var amountAvg = await _transactionRepository.GetTransactionAmountAverage(cardNumber);
-            var accountHolderCardsCount = await _accountHolderRepository.GetAccountHolderCardsCount(cardNumber);
-
-            var profile = new Profile()
-            {
-                CardNumber = cardNumber,
-                TransactionsAmountAverage = amountAvg,
-                AccountHolderCardsCount = accountHolderCardsCount
-            };
-            if (_settings.redisCache.EnableCaching)
-            {
-                _redisRepository.AddProfile(profile);
-            }
-            await _profileRepository.AddAsync(profile);
-        }
+        await BuildProfiles();
     }
     public async Task CreateProfileWithNewDataSets(List<string> accountHolderDataSetFileNames, List<string> transactionDataSetFileNames)
     {
@@ -87,13 +137,41 @@ public class ApiHelper:IApiHelper
         {
             await AddTransactionFromFileToDataBase(transactionDataSetFileName);
         }
+        await _profileRepository.DeleteAll();
+        await BuildProfiles();
     }
     public async Task DeleteTableRows()
     {
         await _profileRepository.DeleteAll();
         await _transactionRepository.DeleteAll();
         await _accountHolderRepository.DeleteAll();
-        await _redisRepository.DeleteAll();
+        if (_settings.redisCache.EnableCaching)
+        {
+            await _redisRepository.DeleteAll();
+        }
+    }
+    private async Task BuildProfiles()
+    {
+        var accountHolderNameAndCardNumbers = await _accountHolderRepository.GetAllAccountHolderNameAndCardNumbers();
+        foreach (var tuple in accountHolderNameAndCardNumbers)
+        {
+            var amountAvg = await _transactionRepository.GetTransactionAmountAverage(tuple.Item1);
+            var accountHolderCardsCount = await _accountHolderRepository.GetAccountHolderCardsCount(tuple.Item1);
+
+            var profile = new Profile()
+            {
+                CardNumber = tuple.Item1,
+                Name = tuple.Item2,
+                TransactionsAmountAverage = amountAvg,
+                AccountHolderCardsCount = accountHolderCardsCount
+            };
+            if (_settings.redisCache.EnableCaching)
+            {
+                _redisRepository.AddProfile(profile);
+            }
+
+            await _profileRepository.AddAsync(profile);
+        }
     }
     private async Task AddInformationFromDirectoryToDataBase()
     {

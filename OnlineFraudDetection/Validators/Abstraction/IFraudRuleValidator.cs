@@ -1,6 +1,8 @@
-﻿namespace OnlineFraudDetection.Validators.Abstraction;
+﻿using EFDataAccessLibrary.Models;
+
+namespace OnlineFraudDetection.Validators.Abstraction;
 
 public interface IFraudRuleValidator
 {
-    int GetPercentage(object fromTransaction, object fromProfile);
+    int GetPercentage(Transaction transaction, Profile profile);
 }
