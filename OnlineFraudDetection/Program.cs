@@ -7,8 +7,10 @@ using OnlineFraudDetection.Repositories.Abstraction;
 using OnlineFraudDetection.Repositories.Implementation;
 using OnlineFraudDetection.Validators.Abstraction;
 using OnlineFraudDetection.Validators.Implementation;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<DataBaseContext>(options =>
 {
@@ -21,13 +23,16 @@ builder.Services.AddScoped<IApiHelper, ApiHelper>();
 builder.Services.AddScoped<IValidator, Validator>();
 builder.Services.AddSingleton<RedisConnectionManager>();
 builder.Services.AddSingleton<IRedisRepository,RedisRepository>();
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .CreateLogger();
+
 var settings = builder.Configuration.GetSection("Settings").Get<Settings>();
 var settingsAreValid = ValidateSettings(settings);
-builder.Services.AddSingleton<Settings>(settings);
+builder.Services.AddSingleton(settings);
 
 var app = builder.Build();
 
