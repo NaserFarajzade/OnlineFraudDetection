@@ -66,6 +66,11 @@ namespace EFDataAccessLibrary.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<long>("TransactionsAmountAverage")
                         .HasColumnType("bigint");
 
