@@ -11,7 +11,10 @@ public class RedisConnectionManager
         {
             if (lazyConnection == null)
             {
-                lazyConnection = new Lazy<ConnectionMultiplexer>(() => ConnectionMultiplexer.Connect($"{settings.redisCache.IP}:{settings.redisCache.Port}"));
+                lazyConnection = new Lazy<ConnectionMultiplexer>(
+                    () => ConnectionMultiplexer.Connect($"{settings.redisCache.IP}:{settings.redisCache.Port}",
+                        options => options.AllowAdmin = true)
+                    );
             }
         }
     }
