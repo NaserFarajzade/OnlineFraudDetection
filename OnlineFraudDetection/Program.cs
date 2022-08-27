@@ -14,7 +14,11 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<DataBaseContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Default") ?? throw new Exception("Database not found"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default") ?? throw new Exception("Database not found"),
+        sqlServerOptionsAction: builder =>
+        {
+            builder.EnableRetryOnFailure();
+        });
 });
 builder.Services.AddScoped<IAccountHolderRepository, AccountHolderRepository>();
 builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
