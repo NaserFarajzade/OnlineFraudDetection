@@ -150,6 +150,13 @@ public class ApiHelper:IApiHelper
             await _redisRepository.DeleteAll();
         }
     }
+
+    public Task EnableRedis(bool beEnable)
+    {
+        _settings.redisCache.EnableCaching = beEnable;
+        return Task.CompletedTask;
+    }
+
     private async Task BuildProfiles()
     {
         var accountHolderNameAndCardNumbers = await _accountHolderRepository.GetAllAccountHolderNameAndCardNumbers();

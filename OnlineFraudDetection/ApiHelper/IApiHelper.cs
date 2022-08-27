@@ -8,4 +8,5 @@ public interface IApiHelper
     Task CreateProfiles();
     Task CreateProfileWithNewDataSets(List<string> accountHolderDataSetFileNames, List<string> transactionDataSetFileNames);
     Task DeleteTableRows();
+    Task EnableRedis(bool beEnable);
 }
