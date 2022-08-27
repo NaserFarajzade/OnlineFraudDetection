@@ -19,4 +19,10 @@ public class RedisController : ControllerBase
     {
         await _apiHelper.EnableRedis(beEnable);
     }
+    
+    [HttpGet]
+    public async Task<bool> IsRedisEnable()
+    {
+        return await _apiHelper.IsRedisEnable();
+    }
 }
