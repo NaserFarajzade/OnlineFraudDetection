@@ -20,4 +20,6 @@ public class FraudResult
     public int ExceedingTheAverageRuleValidationPercentage { get; set; }
     public bool IsRedisCacheEnabled { get; set; }
 
+    public bool TransactionLabel { get; set; }
+    public bool ResultLabel { get; set; }
 }

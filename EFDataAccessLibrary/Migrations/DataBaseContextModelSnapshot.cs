@@ -92,6 +92,9 @@ namespace EFDataAccessLibrary.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
 
+                    b.Property<bool>("IsFraudulentLabel")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OriginCard")
                         .IsRequired()
                         .HasMaxLength(16)

@@ -2,6 +2,6 @@
 
 public class DataSetsAddress
 {
-    public List<string> accountHolderDataSetFileNames { get; set; }
-    public List<string> transactionDataSetFileNames { get; set; }
+    public List<string>? accountHolderDataSetFileNames { get; set; }
+    public List<string>? transactionDataSetFileNames { get; set; }
 }

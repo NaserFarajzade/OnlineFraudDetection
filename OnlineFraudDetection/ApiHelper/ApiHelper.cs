@@ -4,7 +4,6 @@ using OnlineFraudDetection.Models;
 using OnlineFraudDetection.RedisCache;
 using OnlineFraudDetection.Repositories.Abstraction;
 using OnlineFraudDetection.Validators.Abstraction;
-using OnlineFraudDetection.Validators.Implementation;
 using Serilog;
 
 namespace OnlineFraudDetection.ApiHelper;
@@ -17,6 +16,7 @@ public class ApiHelper:IApiHelper
     private readonly IRedisRepository _redisRepository;
     private readonly Settings _settings;
     private readonly IValidator _validator;
+    private readonly Random _random;
 
     public ApiHelper(
         ITransactionRepository transactionRepository, 
@@ -32,6 +32,7 @@ public class ApiHelper:IApiHelper
         _redisRepository = redisRepository;
         _settings = settings;
         _validator = validator;
+        _random = new Random();
     }
 
     public async Task<string> GetFraudPercentage(Transaction transaction)
@@ -60,6 +61,9 @@ public class ApiHelper:IApiHelper
         result.DataBaseRequestDuration = dbRequestDuration;
         result.TotalElapsedTime = totalElapsedTime;
         result.IsRedisCacheEnabled = _settings.redisCache.EnableCaching;
+        result.TransactionLabel = transaction.IsFraudulentLabel;
+        result.ResultLabel = result.Percentage >= _settings.FraudPercentageThreshold;
+
         var timeLog = new SingleValueLog()
         {
             Id = transaction.Id,
@@ -126,17 +130,24 @@ public class ApiHelper:IApiHelper
         await AddInformationFromDirectoryToDataBase();
         await BuildProfiles();
     }
-    public async Task CreateProfileWithNewDataSets(List<string> accountHolderDataSetFileNames, List<string> transactionDataSetFileNames)
+    public async Task CreateProfileWithNewDataSets(List<string>? accountHolderDataSetFileNames, List<string>? transactionDataSetFileNames)
     {
-        foreach (var accountHolderDataSetFileName in accountHolderDataSetFileNames)
+        if (accountHolderDataSetFileNames != null && accountHolderDataSetFileNames.Count != 0)
         {
-            await AddAccountHolderFromFileToDataBase(accountHolderDataSetFileName);
+            foreach (var accountHolderDataSetFileName in accountHolderDataSetFileNames)
+            {
+                await AddAccountHolderFromFileToDataBase(accountHolderDataSetFileName);
+            }
         }
 
-        foreach (var transactionDataSetFileName in transactionDataSetFileNames)
+        if (transactionDataSetFileNames != null && transactionDataSetFileNames.Count != 0)
         {
-            await AddTransactionFromFileToDataBase(transactionDataSetFileName);
+            foreach (var transactionDataSetFileName in transactionDataSetFileNames)
+            {
+                await AddTransactionFromFileToDataBase(transactionDataSetFileName);
+            }
         }
+
         await _profileRepository.DeleteAll();
         await BuildProfiles();
     }
@@ -155,6 +166,11 @@ public class ApiHelper:IApiHelper
     {
         _settings.redisCache.EnableCaching = beEnable;
         return Task.CompletedTask;
+    }
+
+    public Task<bool> IsRedisEnable()
+    {
+        return Task.FromResult(_settings.redisCache.EnableCaching);
     }
 
     private async Task BuildProfiles()

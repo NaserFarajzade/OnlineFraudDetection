@@ -20,4 +20,5 @@ public class Transaction
     public DateTime TransactionDateTime { get; set; }
     public long TransactionAmount { get; set; }
     public string TransactionReference { get; set; }
-}
+    public bool IsFraudulentLabel { get; set; }
+} 
