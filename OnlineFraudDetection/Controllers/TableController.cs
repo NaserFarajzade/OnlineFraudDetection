@@ -14,7 +14,7 @@ public class TableController : Controller
         _apiHelper = apiHelper;
     }
     
-    [HttpGet]
+    [HttpDelete]
     public async Task DeleteTableRows()
     {
         await _apiHelper.DeleteTableRows();
